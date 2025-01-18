@@ -41,7 +41,7 @@ type KirillAppSpec struct {
 type PodTemplateSpec struct {
 	// Metadata of the pods
 	Metadata metav1.ObjectMeta `json:"metadata,omitempty"`
-
+	
 	// Specification of the pods
 	Spec PodSpec `json:"spec"`
 }
