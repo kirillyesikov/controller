@@ -119,8 +119,6 @@ func (r *KirillAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
                                   }
 	                   }
 	            }
-		    return ctrl.Result{}, nil
-  }
 
 service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
