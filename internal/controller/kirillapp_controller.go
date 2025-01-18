@@ -167,7 +167,19 @@ foundService := &corev1.Service{}
 	return ctrl.Result{}, nil
 }
 
-
+func serviceSpecEqual(existing, desired corev1.ServiceSpec) bool {
+	if len(existing.Ports) != len(desired.Ports) {
+		return false
+	}
+	for i := range existing.Ports {
+		if existing.Ports[i] != desired.Ports[i] {
+			return false
+		}
+	}
+	return existing.Selector != nil && desired.Selector != nil &&
+		reflect.DeepEqual(existing.Selector, desired.Selector) &&
+		existing.Type == desired.Type
+}
 
 
          
