@@ -1,0 +1,15 @@
+apiVersion: apps.kubernetesoperator.atwebpages.com/v1
+kind: KirillApp
+metadata:
+  labels:
+    app.kubernetes.io/name: controller
+    app.kubernetes.io/managed-by: kustomize
+  name: kirillapp-sample
+spec:
+  replicas: 3
+  image: kyesikov/radio:latest 
+  #
+  #
+  #
+  #
+  # O(user): Add fields here
