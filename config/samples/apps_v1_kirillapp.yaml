@@ -7,8 +7,19 @@ metadata:
   name: kirillapp-sample
 spec:
   replicas: 3
-  image: kyesikov/radio:latest 
-  #
+  selector:
+    matchLabels:
+      app: kirillapp
+  template:
+    metadata:
+      labels:
+        app: kirillapp
+    spec:
+      containers:
+        - name: kirillapp-sample
+          image: kyesikov/radio:latest
+          ports:
+            - containerPort: 3000
   #
   #
   #

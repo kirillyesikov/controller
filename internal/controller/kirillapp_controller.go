@@ -18,17 +18,17 @@ package controller
 
 import (
 	"context"
-	"reflect"
-        appsv1 "k8s.io/api/apps/v1"
+	appv1 "github.com/kirillyesikov/controller/api/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-           "k8s.io/apimachinery/pkg/util/intstr"
-          "sigs.k8s.io/controller-runtime/pkg/client"
-        "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-        "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	appv1 "github.com/kirillyesikov/controller/api/v1"
 )
 
 // KirillAppReconciler reconciles a KirillApp object
@@ -52,76 +52,68 @@ type KirillAppReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.0/pkg/reconcile
 func (r *KirillAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
-            
+
 	kirillApp := &appv1.KirillApp{}
 	err := r.Get(ctx, req.NamespacedName, kirillApp)
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
-            }
-	
+	}
 
-	    deployment := &appsv1.Deployment{
-                ObjectMeta: metav1.ObjectMeta{
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      kirillApp.Name + "-deployment",
 			Namespace: kirillApp.Namespace,
-	          },
-
-		  Spec: appsv1.DeploymentSpec{
-	              Replicas: kirillApp.Spec.Replicas,
-		      Selector: &metav1.LabelSelector{
-			       MatchLabels: map[string]string{"app": kirillApp.Name},
 		},
 
-		       Template: corev1.PodTemplateSpec{
-			     ObjectMeta: metav1.ObjectMeta{
-				 Labels: map[string]string{"app": kirillApp.Name},
-		        },
+		Spec: appsv1.DeploymentSpec{
+			Replicas: kirillApp.Spec.Replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": kirillApp.Name},
+			},
 
-			 Spec: corev1.PodSpec{
-				 Containers: []corev1.Container{
-			           {
-					 Name:  kirillApp.Name,
-					 Image: "kyesikov/radio:latest",		 
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{"app": kirillApp.Name},
+				},
 
-			           },
-			   },
-                         },
-		       },
-	       },     
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  kirillApp.Name,
+							Image: "kyesikov/radio:latest",
+						},
+					},
+				},
+			},
+		},
+	}
 
-              }
+	if err := controllerutil.SetControllerReference(kirillApp, deployment, r.Scheme); err != nil {
+		return ctrl.Result{}, err
 
+	}
 
+	found := &appsv1.Deployment{}
+	err = r.Get(ctx, client.ObjectKeyFromObject(deployment), found)
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			err = r.Create(ctx, deployment)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	} else {
+		if *found.Spec.Replicas != *deployment.Spec.Replicas || found.Spec.Template.Spec.Containers[0].Image != deployment.Spec.Template.Spec.Containers[0].Image {
+			found.Spec.Replicas = deployment.Spec.Replicas
+			found.Spec.Template.Spec.Containers[0].Image = deployment.Spec.Template.Spec.Containers[0].Image
+			err = r.Update(ctx, found)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	}
 
-
-	      if err := controllerutil.SetControllerReference(kirillApp, deployment, r.Scheme); err != nil {
-               return ctrl.Result{}, err
-
-	   }
-
-
-
-	           found := &appsv1.Deployment{}
-		   err = r.Get(ctx, client.ObjectKeyFromObject(deployment), found)
-		    if err != nil {
-			  if client.IgnoreNotFound(err) != nil {
-				  err = r.Create(ctx, deployment)
-				  if err != nil {
-				     return ctrl.Result{}, err
-			          }
-		         }
-		 } else {
-			 if *found.Spec.Replicas != *deployment.Spec.Replicas || found.Spec.Template.Spec.Containers[0].Image != deployment.Spec.Template.Spec.Containers[0].Image {
-				 found.Spec.Replicas = deployment.Spec.Replicas
-				 found.Spec.Template.Spec.Containers[0].Image = deployment.Spec.Template.Spec.Containers[0].Image
-				 err = r.Update(ctx, found)
-				 if err != nil {
-					 return ctrl.Result{}, err
-                                  }
-	                   }
-	            }
-
-service := &corev1.Service{
+	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kirillApp.Name + "-service",
 			Namespace: kirillApp.Namespace,
@@ -130,7 +122,7 @@ service := &corev1.Service{
 			Selector: map[string]string{"app": kirillApp.Name},
 			Ports: []corev1.ServicePort{
 				{
-					Port:       80, // External port
+					Port:       80,                   // External port
 					TargetPort: intstr.FromInt(3000), // Port in the container
 					Protocol:   corev1.ProtocolTCP,
 				},
@@ -144,8 +136,7 @@ service := &corev1.Service{
 		return ctrl.Result{}, err
 	}
 
-
-foundService := &corev1.Service{}
+	foundService := &corev1.Service{}
 	err = r.Get(ctx, client.ObjectKeyFromObject(service), foundService)
 	if err != nil {
 		if client.IgnoreNotFound(err) == nil {
@@ -182,12 +173,7 @@ func serviceSpecEqual(existing, desired corev1.ServiceSpec) bool {
 		existing.Type == desired.Type
 }
 
-
-         
-
-
-	// TODO(user): your logic here
-
+// TODO(user): your logic here
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *KirillAppReconciler) SetupWithManager(mgr ctrl.Manager) error {

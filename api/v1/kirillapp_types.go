@@ -28,20 +28,17 @@ type KirillAppSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-            Replicas *int32 `json:"replicas"`
-	    Selector *metav1.LabelSelector `json:"selector"`
-	    Template PodTemplateSpec `json:"template"`
-    
+	Replicas *int32                `json:"replicas"`
+	Selector *metav1.LabelSelector `json:"selector"`
+	Template PodTemplateSpec       `json:"template"`
 
 	// Foo is an example field of KirillApp. Edit kirillapp_types.go to remove/update
 }
 
-
-
 type PodTemplateSpec struct {
 	// Metadata of the pods
 	Metadata metav1.ObjectMeta `json:"metadata,omitempty"`
-	
+
 	// Specification of the pods
 	Spec PodSpec `json:"spec"`
 }
@@ -80,12 +77,9 @@ type ResourceRequirements struct {
 	Requests map[string]string `json:"requests,omitempty"`
 }
 
-
-
 // KirillAppStatus defines the observed state of KirillApp
 type KirillAppStatus struct {
-
-           AvailableReplicas int32 `json:"availableReplicas"`
+	AvailableReplicas int32 `json:"availableReplicas"`
 
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
