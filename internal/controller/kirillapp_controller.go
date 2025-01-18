@@ -122,6 +122,54 @@ func (r *KirillAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		    return ctrl.Result{}, nil
   }
 
+service := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      kirillApp.Name + "-service",
+			Namespace: kirillApp.Namespace,
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: map[string]string{"app": kirillApp.Name},
+			Ports: []corev1.ServicePort{
+				{
+					Port:       80, // External port
+					TargetPort: intstr.FromInt(3000), // Port in the container
+					Protocol:   corev1.ProtocolTCP,
+				},
+			},
+			Type: corev1.ServiceTypeLoadBalancer, // Change to NodePort/LoadBalancer if needed
+		},
+	}
+
+	// Set controller reference for Service
+	if err := controllerutil.SetControllerReference(kirillApp, service, r.Scheme); err != nil {
+		return ctrl.Result{}, err
+	}
+
+
+foundService := &corev1.Service{}
+	err = r.Get(ctx, client.ObjectKeyFromObject(service), foundService)
+	if err != nil {
+		if client.IgnoreNotFound(err) == nil {
+			err = r.Create(ctx, service)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	} else {
+		// Update Service if needed
+		if !serviceSpecEqual(service.Spec, foundService.Spec) {
+			foundService.Spec = service.Spec
+			err = r.Update(ctx, foundService)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	}
+
+	return ctrl.Result{}, nil
+}
+
+
 
 
          
