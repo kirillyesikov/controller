@@ -29,11 +29,58 @@ type KirillAppSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
             Replicas *int32 `json:"replicas"`
-	    Image    string `json:"image"`
+	    Selector *metav1.LabelSelector `json:"selector"`
+	    Template PodTemplateSpec `json:"template"`
     
 
 	// Foo is an example field of KirillApp. Edit kirillapp_types.go to remove/update
 }
+
+
+
+type PodTemplateSpec struct {
+	// Metadata of the pods
+	Metadata metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	// Specification of the pods
+	Spec PodSpec `json:"spec"`
+}
+
+type PodSpec struct {
+	// List of containers
+	Containers []Container `json:"containers"`
+}
+
+type Container struct {
+	// Name of the container
+	Name string `json:"name"`
+
+	// Docker image to use for the container
+	Image string `json:"image"`
+
+	// List of ports to expose
+	Ports []ContainerPort `json:"ports,omitempty"`
+
+	// Resource requirements for the container
+	Resources ResourceRequirements `json:"resources,omitempty"`
+}
+
+type ContainerPort struct {
+	// Name of the port
+	Name string `json:"name,omitempty"`
+
+	// Port number
+	ContainerPort int32 `json:"containerPort"`
+}
+type ResourceRequirements struct {
+	// Limits describes the maximum amount of compute resources allowed
+	Limits map[string]string `json:"limits,omitempty"`
+
+	// Requests describes the minimum amount of compute resources required
+	Requests map[string]string `json:"requests,omitempty"`
+}
+
+
 
 // KirillAppStatus defines the observed state of KirillApp
 type KirillAppStatus struct {
