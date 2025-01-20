@@ -22,6 +22,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"reflect"
@@ -56,7 +57,7 @@ func (r *KirillAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	kirillApp := &appv1.KirillApp{}
 	if err := r.Get(ctx, req.NamespacedName, kirillApp); err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			log.Info("KirillApp resource not found. Ignoring since object must be deleted.")
 			return ctrl.Result{}, nil
 		}
@@ -108,7 +109,7 @@ func (r *KirillAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	foundDeployment := &appsv1.Deployment{}
       if err := r.Get(ctx, client.ObjectKeyFromObject(deployment), foundDeployment); err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			log.Info("Creating Deployment", "DeploymentName", deployment.Name)
 			if err := r.Create(ctx, deployment); err != nil {
 				log.Error(err, "Failed to create Deployment")
@@ -158,7 +159,7 @@ func (r *KirillAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	foundService := &corev1.Service{}
     if err := r.Get(ctx, client.ObjectKeyFromObject(service), foundService); err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			log.Info("Creating Service", "ServiceName", service.Name)
 			if err := r.Create(ctx, service); err != nil {
 				log.Error(err, "Failed to create Service")
