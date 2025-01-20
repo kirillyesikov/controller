@@ -13,7 +13,7 @@ Introducing a new Kubernetes workload resource using API extension and Open SDK 
 - go version v1.22.0+
 - docker version 17.03+.
 - kubectl.
-- Access to a Kubernetescluster.
+- Access to a Kubernetes cluster.
 
 ### To Deploy on the cluster
 **Build and push your image to the location specified by `IMG`:**
