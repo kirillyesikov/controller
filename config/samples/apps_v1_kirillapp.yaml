@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: kirillapp-sample
 spec:
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
       app: kirillapp

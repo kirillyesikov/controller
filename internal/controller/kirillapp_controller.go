@@ -21,8 +21,8 @@ import (
 	appv1 "github.com/kirillyesikov/controller/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"reflect"
@@ -53,7 +53,7 @@ type KirillAppReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.0/pkg/reconcile
 func (r *KirillAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
-        log.Info("Reconciling KirillApp", "Name", req.NamespacedName)
+	log.Info("Reconciling KirillApp", "Name", req.NamespacedName)
 
 	kirillApp := &appv1.KirillApp{}
 	if err := r.Get(ctx, req.NamespacedName, kirillApp); err != nil {
@@ -71,7 +71,6 @@ func (r *KirillAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		replicas = *kirillApp.Spec.Replicas
 	}
 
-	
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kirillApp.Name + "-deployment",
@@ -79,7 +78,7 @@ func (r *KirillAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		},
 
 		Spec: appsv1.DeploymentSpec{
-			Replicas: kirillApp.Spec.Replicas,
+			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": kirillApp.Name},
 			},
@@ -108,7 +107,7 @@ func (r *KirillAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	foundDeployment := &appsv1.Deployment{}
-      if err := r.Get(ctx, client.ObjectKeyFromObject(deployment), foundDeployment); err != nil {
+	if err := r.Get(ctx, client.ObjectKeyFromObject(deployment), foundDeployment); err != nil {
 		if apierrors.IsNotFound(err) {
 			log.Info("Creating Deployment", "DeploymentName", deployment.Name)
 			if err := r.Create(ctx, deployment); err != nil {
@@ -131,7 +130,6 @@ func (r *KirillAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 		}
 	}
-
 
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -158,7 +156,7 @@ func (r *KirillAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	foundService := &corev1.Service{}
-    if err := r.Get(ctx, client.ObjectKeyFromObject(service), foundService); err != nil {
+	if err := r.Get(ctx, client.ObjectKeyFromObject(service), foundService); err != nil {
 		if apierrors.IsNotFound(err) {
 			log.Info("Creating Service", "ServiceName", service.Name)
 			if err := r.Create(ctx, service); err != nil {
