@@ -51,14 +51,26 @@ type KirillAppReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.0/pkg/reconcile
 func (r *KirillAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	log := log.FromContext(ctx)
+        log.Info("Reconciling KirillApp", "Name", req.NamespacedName)
 
 	kirillApp := &appv1.KirillApp{}
-	err := r.Get(ctx, req.NamespacedName, kirillApp)
-	if err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+	if err := r.Get(ctx, req.NamespacedName, kirillApp); err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("KirillApp resource not found. Ignoring since object must be deleted.")
+			return ctrl.Result{}, nil
+		}
+		log.Error(err, "Failed to get KirillApp")
+		return ctrl.Result{}, err
 	}
 
+	// Define Deployment
+	replicas := int32(1) // Default replicas to 1 if unspecified
+	if kirillApp.Spec.Replicas != nil {
+		replicas = *kirillApp.Spec.Replicas
+	}
+
+	
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kirillApp.Name + "-deployment",
@@ -89,29 +101,36 @@ func (r *KirillAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if err := controllerutil.SetControllerReference(kirillApp, deployment, r.Scheme); err != nil {
+		log.Error(err, "Failed to set controller reference for Deployment")
 		return ctrl.Result{}, err
 
 	}
 
-	found := &appsv1.Deployment{}
-	err = r.Get(ctx, client.ObjectKeyFromObject(deployment), found)
-	if err != nil {
-		if client.IgnoreNotFound(err) != nil {
-			err = r.Create(ctx, deployment)
-			if err != nil {
+	foundDeployment := &appsv1.Deployment{}
+      if err := r.Get(ctx, client.ObjectKeyFromObject(deployment), foundDeployment); err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("Creating Deployment", "DeploymentName", deployment.Name)
+			if err := r.Create(ctx, deployment); err != nil {
+				log.Error(err, "Failed to create Deployment")
 				return ctrl.Result{}, err
 			}
+		} else {
+			log.Error(err, "Failed to get Deployment")
+			return ctrl.Result{}, err
 		}
 	} else {
-		if *found.Spec.Replicas != *deployment.Spec.Replicas || found.Spec.Template.Spec.Containers[0].Image != deployment.Spec.Template.Spec.Containers[0].Image {
-			found.Spec.Replicas = deployment.Spec.Replicas
-			found.Spec.Template.Spec.Containers[0].Image = deployment.Spec.Template.Spec.Containers[0].Image
-			err = r.Update(ctx, found)
-			if err != nil {
+		if *foundDeployment.Spec.Replicas != *deployment.Spec.Replicas ||
+			foundDeployment.Spec.Template.Spec.Containers[0].Image != deployment.Spec.Template.Spec.Containers[0].Image {
+			log.Info("Updating Deployment", "DeploymentName", foundDeployment.Name)
+			foundDeployment.Spec.Replicas = deployment.Spec.Replicas
+			foundDeployment.Spec.Template.Spec.Containers[0].Image = deployment.Spec.Template.Spec.Containers[0].Image
+			if err := r.Update(ctx, foundDeployment); err != nil {
+				log.Error(err, "Failed to update Deployment")
 				return ctrl.Result{}, err
 			}
 		}
 	}
+
 
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -133,24 +152,28 @@ func (r *KirillAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// Set controller reference for Service
 	if err := controllerutil.SetControllerReference(kirillApp, service, r.Scheme); err != nil {
+		log.Error(err, "Failed to set controller reference for Service")
 		return ctrl.Result{}, err
 	}
 
 	foundService := &corev1.Service{}
-	err = r.Get(ctx, client.ObjectKeyFromObject(service), foundService)
-	if err != nil {
-		if client.IgnoreNotFound(err) == nil {
-			err = r.Create(ctx, service)
-			if err != nil {
+    if err := r.Get(ctx, client.ObjectKeyFromObject(service), foundService); err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("Creating Service", "ServiceName", service.Name)
+			if err := r.Create(ctx, service); err != nil {
+				log.Error(err, "Failed to create Service")
 				return ctrl.Result{}, err
 			}
+		} else {
+			log.Error(err, "Failed to get Service")
+			return ctrl.Result{}, err
 		}
 	} else {
-		// Update Service if needed
 		if !serviceSpecEqual(service.Spec, foundService.Spec) {
+			log.Info("Updating Service", "ServiceName", foundService.Name)
 			foundService.Spec = service.Spec
-			err = r.Update(ctx, foundService)
-			if err != nil {
+			if err := r.Update(ctx, foundService); err != nil {
+				log.Error(err, "Failed to update Service")
 				return ctrl.Result{}, err
 			}
 		}
